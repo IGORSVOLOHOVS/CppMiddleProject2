@@ -29,11 +29,11 @@
 ```bash
 mkdir build ; cd build
 
-# Вызывается один раз перед сборкой проекта
-cmake ..
+# Вызывается один раз перед сборкой проекта, чтобы скачать и установить все необходимые зависимости
+conan install --settings=build_type=Debug --build=missing ..
 
 # Вызывается каждый раз, когда необходимо собрать проект
-make -j4
+conan build --settings=build_type=Debug ..
 ```
 
 ### Команда для запуска тестов
