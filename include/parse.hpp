@@ -11,11 +11,32 @@
 namespace stdx::details {
 
 // здесь ваш код
+template<typename T>
+auto parse_value(std::string_view input){
+    return scan_error{"parse_value error!"};
+}
+
+template<>
+inline auto parse_value<std::string>(std::string_view input){
+    return input;
+}
+
+template<>
+inline auto parse_value<double>(std::string_view input){
+    return std::stod(input.data());
+}
 
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
 std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) {
     // здесь ваш код
+    if (fmt == "%f"){
+        return parse_value<double>(input);
+    }else if(fmt == "%s" || fmt == ""){
+        return parse_value<std::string>(input);
+    }else{
+        return std::unexpected(scan_error{"Unformatted text in input and format string are different"});
+    }
 }
 
 // Функция для проверки корректности входных данных и выделения из обеих строк интересующих данных для парсинга

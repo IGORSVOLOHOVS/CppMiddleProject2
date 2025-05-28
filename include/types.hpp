@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace stdx::details {
 
 // Класс для хранения ошибки неуспешного сканирования
@@ -12,6 +14,11 @@ struct scan_error {
 
 template <typename... Ts>
 struct scan_result {
+    std::tuple<Ts...> values_;
+
+    constexpr auto values() const {
+        return values_;
+    }
     // здесь ваш код
 };
 
