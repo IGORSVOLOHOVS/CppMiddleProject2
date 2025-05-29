@@ -1,6 +1,8 @@
 #pragma once
 
+#include <expected>
 #include <string>
+#include <tuple>
 
 namespace stdx::details {
 
@@ -14,10 +16,10 @@ struct scan_error {
 
 template <typename... Ts>
 struct scan_result {
-    std::tuple<Ts...> values_;
+    std::tuple<std::expected<Ts, scan_error>...> values_;
 
     constexpr auto values() const {
-        return values_;
+        return std::make_tuple(std::get<std::expected<Ts, scan_error>>(values_).value()...);
     }
     // здесь ваш код
 };

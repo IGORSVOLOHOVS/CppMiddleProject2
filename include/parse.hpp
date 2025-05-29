@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <expected>
 #include <string>
 #include <string_view>
@@ -18,7 +19,7 @@ auto parse_value(std::string_view input){
 
 template<>
 inline auto parse_value<std::string>(std::string_view input){
-    return input;
+    return std::string{input};
 }
 
 template<>
@@ -26,15 +27,29 @@ inline auto parse_value<double>(std::string_view input){
     return std::stod(input.data());
 }
 
+template<>
+inline auto parse_value<int>(std::string_view input){
+    return std::stoi(input.data());
+}
+
+template<>
+inline auto parse_value<unsigned int>(std::string_view input){
+    return std::stoul(input.data());
+}
+
 // Функция для парсинга значения с учетом спецификатора формата
 template <typename T>
 std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) {
     // здесь ваш код
-    if (fmt == "%f"){
+    if constexpr (std::same_as<T, double>){
         return parse_value<double>(input);
-    }else if(fmt == "%s" || fmt == ""){
-        return parse_value<std::string>(input);
-    }else{
+    }else if constexpr (std::same_as<T, unsigned int>){
+        return parse_value<unsigned int>(input);
+    }else if constexpr (std::same_as<T, int>){
+        return parse_value<int>(input);        
+    }else if constexpr (std::same_as<T, std::string>){
+        return parse_value<std::string>(input);        
+    }else {
         return std::unexpected(scan_error{"Unformatted text in input and format string are different"});
     }
 }

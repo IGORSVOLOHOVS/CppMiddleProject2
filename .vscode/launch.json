@@ -8,7 +8,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "Launch DymanicScan",
-            "program": "${workspaceFolder}/build/DymanicScan",
+            "program": "${workspaceFolder}/build/scan_tests",
             "args": [
                 "-i",
                 "input.txt",
