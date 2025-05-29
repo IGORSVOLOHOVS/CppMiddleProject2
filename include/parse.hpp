@@ -1,109 +1,78 @@
 #pragma once
 
+#include <charconv>
 #include <concepts>
-#include <expected>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+#include <optional>
+#include <system_error>
 
+#include "format_string.hpp"
 #include "types.hpp"
 
 namespace stdx::details {
 
+// Шаблонная функция, возвращающая пару позиций в строке с исходными данными, соотвествующих I-ому плейсхолдеру
+// Функция закомментирована, так как еще не реализованы классы, которые она использует
+
+template<int I, format_string fmt, fixed_string source>
+consteval auto get_current_source_for_parsing() {
+    static_assert(I >= 0 && I < fmt.number_placeholders, "Invalid placeholder index");
+
+    constexpr auto to_sv = [](const auto& fs) {
+        return std::string_view(fs.data, fs.size() - 1);
+    };
+
+    constexpr auto fmt_sv = to_sv(fmt.fmt);
+    constexpr auto src_sv = to_sv(source);
+    constexpr auto& positions = fmt.placeholder_positions;
+
+    // Получаем границы текущего плейсхолдера в формате
+    constexpr auto pos_i = positions[I];
+    constexpr size_t fmt_start = pos_i.first, fmt_end = pos_i.second;
+
+    // Находим начало в исходной строке
+    constexpr auto src_start = [&]{
+        if constexpr (I == 0) {
+            return fmt_start;
+        } else {
+            // Находим конец предыдущего плейсхолдера в исходной строке
+            constexpr auto prev_bounds = get_current_source_for_parsing<I-1, fmt, source>();
+            const auto prev_end = prev_bounds.second;
+
+            // Получаем разделитель между текущим и предыдущим плейсхолдерами
+            constexpr auto prev_fmt_end = positions[I-1].second;
+            constexpr auto sep = fmt_sv.substr(prev_fmt_end + 1, fmt_start - (prev_fmt_end + 1));
+
+            // Ищем разделитель после предыдущего значения
+            auto pos = src_sv.find(sep, prev_end);
+            return pos != std::string_view::npos ? pos + sep.size() : src_sv.size();
+        }
+    }();
+
+    // Находим конец в исходной строке
+    constexpr auto src_end = [&]{
+        // Получаем разделитель после текущего плейсхолдера
+        if constexpr(fmt_end == (fmt_sv.size() - 1)) {
+            return src_sv.size();
+        }
+        constexpr auto sep = fmt_sv.substr(fmt_end + 1,
+            (I < fmt.number_placeholders - 1)
+                ? positions[I+1].first - (fmt_end + 1)
+                : fmt_sv.size() - (fmt_end + 1));
+        // Ищем разделитель после текущего значения
+        constexpr auto pos = src_sv.find(sep, src_start);
+        return pos != std::string_view::npos ? pos : src_sv.size();
+    }();
+    return std::pair{src_start, src_end};
+}
+
+
+// Реализуйте семейство функция parse_value
+
+// Шаблонная функция, выполняющая преобразования исходных данных в конкретный тип на основе I-го плейсхолдера
+
 // здесь ваш код
-template<typename T>
-auto parse_value(std::string_view input){
-    return scan_error{"parse_value error!"};
-}
-
-template<>
-inline auto parse_value<std::string>(std::string_view input){
-    return std::string{input};
-}
-
-template<>
-inline auto parse_value<double>(std::string_view input){
-    return std::stod(input.data());
-}
-
-template<>
-inline auto parse_value<int>(std::string_view input){
-    return std::stoi(input.data());
-}
-
-template<>
-inline auto parse_value<unsigned int>(std::string_view input){
-    return std::stoul(input.data());
-}
-
-// Функция для парсинга значения с учетом спецификатора формата
-template <typename T>
-std::expected<T, scan_error> parse_value_with_format(std::string_view input, std::string_view fmt) {
+void parse_input() {  // поменяйте сигнатуру
     // здесь ваш код
-    if constexpr (std::same_as<T, double>){
-        return parse_value<double>(input);
-    }else if constexpr (std::same_as<T, unsigned int>){
-        return parse_value<unsigned int>(input);
-    }else if constexpr (std::same_as<T, int>){
-        return parse_value<int>(input);        
-    }else if constexpr (std::same_as<T, std::string>){
-        return parse_value<std::string>(input);        
-    }else {
-        return std::unexpected(scan_error{"Unformatted text in input and format string are different"});
-    }
-}
-
-// Функция для проверки корректности входных данных и выделения из обеих строк интересующих данных для парсинга
-template <typename... Ts>
-std::expected<std::pair<std::vector<std::string_view>, std::vector<std::string_view>>, scan_error>
-parse_sources(std::string_view input, std::string_view format) {
-    std::vector<std::string_view> format_parts;  // Части формата между {}
-    std::vector<std::string_view> input_parts;
-    size_t start = 0;
-    while (true) {
-        size_t open = format.find('{', start);
-        if (open == std::string_view::npos) {
-            break;
-        }
-        size_t close = format.find('}', open);
-        if (close == std::string_view::npos) {
-            break;
-        }
-
-        // Если между предыдущей } и текущей { есть текст,
-        // проверяем его наличие во входной строке
-        if (open > start) {
-            std::string_view between = format.substr(start, open - start);
-            auto pos = input.find(between);
-            if (input.size() < between.size() || pos == std::string_view::npos) {
-                return std::unexpected(scan_error{"Unformatted text in input and format string are different"});
-            }
-            if (start != 0) {
-                input_parts.emplace_back(input.substr(0, pos));
-            }
-
-            input = input.substr(pos + between.size());
-        }
-
-        // Сохраняем спецификатор формата (то, что между {})
-        format_parts.push_back(format.substr(open + 1, close - open - 1));
-        start = close + 1;
-    }
-
-    // Проверяем оставшийся текст после последней }
-    if (start < format.size()) {
-        std::string_view remaining_format = format.substr(start);
-        auto pos = input.find(remaining_format);
-        if (input.size() < remaining_format.size() || pos == std::string_view::npos) {
-            return std::unexpected(scan_error{"Unformatted text in input and format string are different"});
-        }
-        input_parts.emplace_back(input.substr(0, pos));
-        input = input.substr(pos + remaining_format.size());
-    } else {
-        input_parts.emplace_back(input);
-    }
-    return std::pair{format_parts, input_parts};
 }
 
 } // namespace stdx::details
