@@ -18,7 +18,7 @@ consteval auto get_current_source_for_parsing() {
     static_assert(I >= 0 && I < fmt.number_placeholders, "Invalid placeholder index");
 
     constexpr auto to_sv = [](const auto& fs) {
-        return std::string_view(fs.data, fs.size() - 1);
+        return std::string_view(fs.data.data(), fs.size() - 1);
     };
 
     constexpr auto fmt_sv = to_sv(fmt.fmt);
@@ -69,10 +69,29 @@ consteval auto get_current_source_for_parsing() {
 // Реализуйте семейство функция parse_value
 
 // Шаблонная функция, выполняющая преобразования исходных данных в конкретный тип на основе I-го плейсхолдера
+template<typename T>
+constexpr T parse_input(const auto& fixed_str) {
+    if constexpr (std::same_as<T,double>){
+        return std::stod(fixed_str.data.data()); // need constexpr!!!
+    }else if constexpr (std::same_as<T,int>){
+        return std::stoi(fixed_str.data.data()); // need constexpr!!!
+    }else {
+        return fixed_str.data.data();
+    }
+}
 
 // здесь ваш код
-void parse_input() {  // поменяйте сигнатуру
+template<int I, format_string fmt, fixed_string source, typename T>
+constexpr T parse_input() {  // поменяйте сигнатуру
     // здесь ваш код
+    constexpr auto value_range = get_current_source_for_parsing<I, fmt, source>();
+
+    constexpr auto from = value_range.first;
+    constexpr auto to = value_range.second;
+    constexpr auto value_str = fixed_string<source.size()>(&source.data[from], &source.data[to]);
+
+    return parse_input<T>(value_str);
 }
+
 
 } // namespace stdx::details

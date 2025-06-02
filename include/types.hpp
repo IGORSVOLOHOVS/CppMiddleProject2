@@ -12,7 +12,6 @@ namespace stdx::details {
 // ваш код здесь
 template<std::size_t N>
 struct fixed_string {
-
     constexpr fixed_string(const char* arr){
         for(size_t i = 0; i < N; i++){
             if(arr[i] == '\0')
@@ -48,6 +47,22 @@ struct fixed_string {
     // ваш код здесь
     std::array<char, N> data{};
 };
+
+template<std::size_t N>
+struct fixed_ints{
+    std::array<char, N> data;
+
+    template <std::size_t... Is>
+    constexpr fixed_ints(const char (&arr)[N], std::integer_sequence<std::size_t, Is...>) : data{arr[Is]...} {}
+ 
+    constexpr fixed_ints(char const(&arr)[N]) : fixed_ints(arr, std::make_integer_sequence<std::size_t, N>())
+    {}
+};
+
+template<fixed_ints arr>
+constexpr auto operator""_xs(){
+    return fixed_string<arr.data.size()>{arr.data.data()};
+}
 
 // Шаблонный класс, хранящий fixed_string достаточной длины для хранения ошибки парсинга
 

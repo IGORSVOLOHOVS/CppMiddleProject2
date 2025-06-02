@@ -10,9 +10,12 @@ namespace stdx::details {
 
 // Шаблонный класс для хранения форматирующей строчки и ее особенностей
 // ваш код здесь
+template<fixed_string str>
 class format_string {
 public:
-    static consteval void get_number_placeholders() {
+    static consteval std::expected<size_t, parse_error> get_number_placeholders() {
+        std::expected<size_t, parse_error> number_placeholders;
+
         constexpr size_t N = str.size();
         if (!N)
             number_placeholders = 0;
@@ -65,23 +68,47 @@ public:
             if (pos >= size || str.data[pos] != '}') {
                 number_placeholders = std::unexpected(parse_error{"\'}\' hasn't been found in appropriate place"});
             }
+
             ++pos;
         }
 
 
         static_assert(!std::same_as<decltype(number_placeholders), std::unexpected<parse_error>>);
 
-        number_placeholders = placeholder_count;
+        return placeholder_count;
     }
 
-    static std::array<std::pair<size_t, size_t>, 3> get_placeholder_positions(){
+    static consteval decltype(auto) get_placeholder_positions() {
+        std::array<std::pair<size_t, size_t>, number_placeholders> placeholder_positions;
+
+        size_t curr_placeholder = 0;
+        size_t pos = 0;
+        constexpr size_t end_pos = str.data.size();
+
+        size_t from_pos = 0;
+        size_t to_pos = 0;
+        while (pos < end_pos) {
+            // Пропускаем все символы до '{'
+            while (pos < end_pos && str.data[pos] != '{') {
+                ++pos;
+            }
+            from_pos = pos;
+
+            // Пропускаем все символы до '{'
+            while (pos < end_pos && str.data[pos] != '}') {
+                ++pos;
+            }
+            to_pos = pos;
+
+            if(pos < end_pos)
+                placeholder_positions[curr_placeholder++] = {from_pos, to_pos};
+        }
         return placeholder_positions;
     }
 
-    // ваш код здесь
-    static fixed_string<3> str;
-    static std::expected<size_t, parse_error> number_placeholders;
-    static std::array<std::pair<size_t, size_t>, 3> placeholder_positions;
+    static constexpr fixed_string<str.data.size()> fmt = {str.data.data()};
+    static constexpr size_t number_placeholders = get_number_placeholders().value();
+    static constexpr std::array<std::pair<size_t, size_t>, number_placeholders> placeholder_positions = get_placeholder_positions();
 };
 
 // Пользовательский литерал
@@ -92,10 +119,11 @@ public:
 ваш код здесь
 }
 */
-constexpr format_string operator ""_fs(const char* str){
-    return {};
+template<fixed_ints arr>
+constexpr auto operator""_fs() {
+    // Возвращаем пустой объект, у которого тип содержит всю информацию
+    return format_string<fixed_string<arr.data.size()>{arr.data.data()}>{};
 }
-
 // Функция для получения количества плейсхолдеров и проверки корректности формирующей строки
 // Функция закомментирована, так как еще не реализованы классы, которые она использует
 /*
