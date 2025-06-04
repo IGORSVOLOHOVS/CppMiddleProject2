@@ -44,6 +44,15 @@ struct fixed_string {
         return data.data();
     }
 
+    constexpr bool is_equal(const char* arr) const{
+        for (size_t i = 0; i < N; ++i) {
+            if (data[i] != arr[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // ваш код здесь
     std::array<char, N> data{};
 };
@@ -78,7 +87,7 @@ template <typename... Ts>
 struct scan_result {
     std::tuple<Ts...> values_;
 
-    constexpr std::tuple<Ts...> values(){
+    constexpr decltype(auto) values(){
         return values_;
     }
 };

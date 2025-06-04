@@ -4,6 +4,8 @@
 #include <concepts>
 #include <optional>
 #include <system_error>
+#include <type_traits>
+#include <cstdint>
 
 #include "format_string.hpp"
 #include "types.hpp"
@@ -69,28 +71,78 @@ consteval auto get_current_source_for_parsing() {
 // Реализуйте семейство функция parse_value
 
 // Шаблонная функция, выполняющая преобразования исходных данных в конкретный тип на основе I-го плейсхолдера
-template<typename T>
-constexpr T parse_input(const auto& fixed_str) {
-    if constexpr (std::same_as<T,double>){
-        return std::stod(fixed_str.data.data()); // need constexpr!!!
-    }else if constexpr (std::same_as<T,int>){
-        return std::stoi(fixed_str.data.data()); // need constexpr!!!
-    }else {
-        return fixed_str.data.data();
+template<std::signed_integral T, fixed_string input>
+constexpr T parse_value() {
+    const auto s = input.c_str();
+    T result = 0;
+    size_t pos = 0;
+    int sign = 1;
+
+    if (s[0] == '-') {
+        sign = -1;
+        pos = 1;
+    } else if (s[0] == '+') {
+        pos = 1;
     }
+    
+    for (size_t i = pos; i < input.size(); ++i) {
+        if (s[i] >= '0' && s[i] <= '9') {
+            result = result * 10 + (s[i] - '0');
+        }
+    }
+
+    return result * sign;
 }
+
+template <std::unsigned_integral T, fixed_string input>
+constexpr T parse_value() {
+    T result = 0;
+    size_t pos = 0;
+    
+    constexpr auto s = input.c_str();
+    for (size_t i = pos; i < input.size(); ++i) {
+        if (s[i] >= '0' && s[i] <= '9') {
+            result = result * 10 + (s[i] - '0');
+        }
+    }
+
+    return result;
+}
+
+template<typename T, fixed_string input>
+constexpr T parse_value() {
+    return T{input.c_str(), input.size()};
+}
+
 
 // здесь ваш код
 template<int I, format_string fmt, fixed_string source, typename T>
 constexpr T parse_input() {  // поменяйте сигнатуру
     // здесь ваш код
     constexpr auto value_range = get_current_source_for_parsing<I, fmt, source>();
+    constexpr auto format_range = fmt.get_placeholder_positions();
 
     constexpr auto from = value_range.first;
-    constexpr auto to = value_range.second;
-    constexpr auto value_str = fixed_string<source.size()>(&source.data[from], &source.data[to]);
+    constexpr auto to = value_range.second ;
+    constexpr auto value_str = fixed_string<to - from>(&source.data[from], &source.data[to]);
 
-    return parse_input<T>(value_str);
+    constexpr auto fmt_from = format_range[I].first;
+    constexpr auto fmt_to = format_range[I].second;
+    constexpr auto fmt_str = fixed_string<fmt_to - fmt_from>(&fmt.fmt.data[fmt_from], &fmt.fmt.data[fmt_to]);
+
+        // 3. Сравниваем плейсхолдер и тип, используя consteval-хелпер
+    if constexpr (fmt_str.is_equal("{}") 
+                    || fmt_str.is_equal("{%s}") 
+                    || (fmt_str.is_equal("{%d}") && std::is_signed_v<T>)
+                    || (fmt_str.is_equal("{%u}") && std::is_unsigned_v<T>)
+                ) 
+    {
+        return parse_value<T, value_str>();
+    } else {
+        static_assert(!std::is_same_v<T, T>, "Invalid placeholder for the given type, or type mismatch.");
+    }
+    return T{};
+    // return parse_value<T, value_str>(); 
 }
 
 

@@ -192,8 +192,8 @@ consteval std::expected<size_t, parse_error> get_number_placeholders() {
 // Функция для получения позиций плейсхолдеров
 
 // ваш код здесь
-void get_placeholder_positions() {  // сигнатуру тоже нужно изменить
-    // ваш код здесь
-}
+// void get_placeholder_positions() {  // сигнатуру тоже нужно изменить
+//     // ваш код здесь
+// }
 
 } // namespace stdx::details
