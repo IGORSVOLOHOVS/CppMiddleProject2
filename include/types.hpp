@@ -2,86 +2,62 @@
 
 #include <algorithm>
 #include <array>
+#include <compare>
 #include <cstddef>
 #include <cstring>
 #include <iterator>
 namespace stdx::details {
 
-// Шаблонный класс, хранящий C-style строку фиксированной длины
-
-// ваш код здесь
-template<std::size_t N>
+constexpr const std::size_t MAX_SUB_STR = 10;
+template<std::size_t N = MAX_SUB_STR>
 struct fixed_string {
-    constexpr fixed_string(const char* arr){
-        for(size_t i = 0; i < N; i++){
-            if(arr[i] == '\0')
-                break;
-
-            data[i] = arr[i];
-        }
+    constexpr fixed_string(const char (&arr)[N]){
+        std::copy_n(arr, N, data.data());
     }
 
-    constexpr fixed_string(const char* from, const char* to){
-        size_t i = 0;
-        for(const char* current = from; current != to; current++){
-            if(i < N){
-                data[i++] = *current;
-            }else{
-                break;
-            }
-        }
+    template<std::size_t S>
+    constexpr fixed_string(const char (&arr)[S]){
+        static_assert(S <= N, "Error: the size of object is less then the size of copy object");
+        std::copy_n(arr, S, data.data());
+    }
+
+    constexpr fixed_string(const char* from, const char* to) {
+        const size_t count_to_copy = std::min(static_cast<size_t>(to - from), N);
+        std::copy_n(from, count_to_copy, data.data());
     }
 
     constexpr size_t size() const {
-        for(size_t i = 0; i < N; i++){
-            if(data[i] == '\0')
-                return i + 1;
-        }
-        return N;
+        return N - std::count(data.begin(), data.end(), '\0');
     }
 
     constexpr const char* c_str() const {
         return data.data();
     }
 
-    constexpr bool is_equal(const char* arr) const{
-        for (size_t i = 0; i < N; ++i) {
-            if (data[i] != arr[i]) {
-                return false;
-            }
-        }
-        return true;
+    constexpr const char& operator[](size_t index) const {
+        return data.at(index);
     }
 
-    // ваш код здесь
+    constexpr char& operator[](size_t index) {
+        return data[index];
+    }
+
+    constexpr auto substr(size_t from, size_t to) const {
+        return fixed_string{&operator[](from), &operator[](to)};
+    }
+
+    constexpr bool operator==(const fixed_string& fs) const{
+        return std::equal(data.begin(), data.end(), fs.data.begin());
+    }
+    constexpr bool operator==(const char (&arr)[N]) const {
+        return std::equal(data.begin(), data.end(), arr);
+    }
+
     std::array<char, N> data{};
 };
 
-template<std::size_t N>
-struct fixed_ints{
-    std::array<char, N> data;
-
-    template <std::size_t... Is>
-    constexpr fixed_ints(const char (&arr)[N], std::integer_sequence<std::size_t, Is...>) : data{arr[Is]...} {}
- 
-    constexpr fixed_ints(char const(&arr)[N]) : fixed_ints(arr, std::make_integer_sequence<std::size_t, N>())
-    {}
-};
-
-template<fixed_ints arr>
-constexpr auto operator""_xs(){
-    return fixed_string<arr.data.size()>{arr.data.data()};
-}
-
-// Шаблонный класс, хранящий fixed_string достаточной длины для хранения ошибки парсинга
-
-// ваш код здесь
-constexpr const char* MAX_PARSE_ERROR_MSG = "\'}\' hasn't been found in appropriate place"; 
-constexpr const size_t MAX_PARSE_ERROR_MSG_SIZE = 42;
-
+constexpr const size_t MAX_PARSE_ERROR_MSG_SIZE = 43;
 struct parse_error : public fixed_string<MAX_PARSE_ERROR_MSG_SIZE>{};
-
-// Шаблонный класс для хранения результатов парсинга
 
 template <typename... Ts>
 struct scan_result {

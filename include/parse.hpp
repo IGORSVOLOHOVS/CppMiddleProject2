@@ -119,30 +119,27 @@ constexpr T parse_value() {
 template<int I, format_string fmt, fixed_string source, typename T>
 constexpr T parse_input() {  // поменяйте сигнатуру
     // здесь ваш код
-    constexpr auto value_range = get_current_source_for_parsing<I, fmt, source>();
-    constexpr auto format_range = fmt.get_placeholder_positions();
-
-    constexpr auto from = value_range.first;
-    constexpr auto to = value_range.second ;
-    constexpr auto value_str = fixed_string<to - from>(&source.data[from], &source.data[to]);
-
-    constexpr auto fmt_from = format_range[I].first;
-    constexpr auto fmt_to = format_range[I].second;
-    constexpr auto fmt_str = fixed_string<fmt_to - fmt_from>(&fmt.fmt.data[fmt_from], &fmt.fmt.data[fmt_to]);
+    constexpr auto source_range = get_current_source_for_parsing<I, fmt, source>();
+    
+    constexpr auto source_from = source_range.first;
+    constexpr auto source_to = source_range.second ;
+    constexpr auto source_str = source.substr(source_from, source_to);
+    
+    constexpr auto fmt_from = fmt.placeholder_positions[I].first;
+    constexpr auto fmt_to = fmt.placeholder_positions[I].second;
+    constexpr auto fmt_str = fmt.substr(fmt_from, fmt_to);
 
         // 3. Сравниваем плейсхолдер и тип, используя consteval-хелпер
-    if constexpr (fmt_str.is_equal("{}") 
-                    || fmt_str.is_equal("{%s}") 
-                    || (fmt_str.is_equal("{%d}") && std::is_signed_v<T>)
-                    || (fmt_str.is_equal("{%u}") && std::is_unsigned_v<T>)
+    if constexpr ((fmt_str == "{" 
+                    || fmt_str == "{%s")
+                    || (fmt_str == "{%d" && std::is_signed_v<T>)
+                    || (fmt_str == "{%u" && std::is_unsigned_v<T>)
                 ) 
     {
-        return parse_value<T, value_str>();
-    } else {
-        static_assert(!std::is_same_v<T, T>, "Invalid placeholder for the given type, or type mismatch.");
-    }
-    return T{};
-    // return parse_value<T, value_str>(); 
+        return parse_value<T, source_str>();
+    } 
+        
+    static_assert(!std::is_same_v<T, T>, "Invalid placeholder for the given type, or type mismatch.");
 }
 
 
