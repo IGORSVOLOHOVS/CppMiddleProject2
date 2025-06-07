@@ -6,9 +6,12 @@
 #include <cstddef>
 #include <cstring>
 #include <iterator>
+#include <tuple>
+#include <utility>
+
 namespace stdx::details {
 
-constexpr const std::size_t MAX_SUB_STR = 10;
+constexpr const std::size_t MAX_SUB_STR = 25;
 template<std::size_t N = MAX_SUB_STR>
 struct fixed_string {
     constexpr fixed_string(const char (&arr)[N]){
@@ -63,8 +66,13 @@ template <typename... Ts>
 struct scan_result {
     std::tuple<Ts...> values_;
 
-    constexpr decltype(auto) values(){
-        return values_;
+    template<size_t I>
+    constexpr decltype(auto) get() const{
+        return std::get<I>(values_);
+    }
+
+    constexpr auto size() const {
+        return sizeof...(Ts);
     }
 };
 

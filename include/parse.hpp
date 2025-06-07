@@ -12,15 +12,12 @@
 
 namespace stdx::details {
 
-// Шаблонная функция, возвращающая пару позиций в строке с исходными данными, соотвествующих I-ому плейсхолдеру
-// Функция закомментирована, так как еще не реализованы классы, которые она использует
-
 template<int I, format_string fmt, fixed_string source>
 consteval auto get_current_source_for_parsing() {
     static_assert(I >= 0 && I < fmt.number_placeholders, "Invalid placeholder index");
 
     constexpr auto to_sv = [](const auto& fs) {
-        return std::string_view(fs.data.data(), fs.size() - 1);
+        return std::string_view(fs.data.data(), fs.size());
     };
 
     constexpr auto fmt_sv = to_sv(fmt.fmt);
@@ -73,21 +70,20 @@ consteval auto get_current_source_for_parsing() {
 // Шаблонная функция, выполняющая преобразования исходных данных в конкретный тип на основе I-го плейсхолдера
 template<std::signed_integral T, fixed_string input>
 constexpr T parse_value() {
-    const auto s = input.c_str();
-    T result = 0;
+    std::remove_cv_t<T> result = 0;
     size_t pos = 0;
     int sign = 1;
 
-    if (s[0] == '-') {
+    if (input[0] == '-') {
         sign = -1;
         pos = 1;
-    } else if (s[0] == '+') {
+    } else if (input[0] == '+') {
         pos = 1;
     }
     
     for (size_t i = pos; i < input.size(); ++i) {
-        if (s[i] >= '0' && s[i] <= '9') {
-            result = result * 10 + (s[i] - '0');
+        if (input[i] >= '0' && input[i] <= '9') {
+            result = result * 10 + (input[i] - '0');
         }
     }
 
@@ -96,29 +92,35 @@ constexpr T parse_value() {
 
 template <std::unsigned_integral T, fixed_string input>
 constexpr T parse_value() {
-    T result = 0;
+    std::remove_cv_t<T> result = 0;
     size_t pos = 0;
-    
-    constexpr auto s = input.c_str();
+
     for (size_t i = pos; i < input.size(); ++i) {
-        if (s[i] >= '0' && s[i] <= '9') {
-            result = result * 10 + (s[i] - '0');
+        if (input[i] >= '0' && input[i] <= '9') {
+            result = result * 10 + (input[i] - '0');
         }
     }
 
     return result;
 }
 
-template<typename T, fixed_string input>
+template<typename T>
+concept stringable = std::is_convertible_v<T, std::string_view>;
+
+template<stringable T, fixed_string input>
 constexpr T parse_value() {
     return T{input.c_str(), input.size()};
+}
+
+template<typename T, fixed_string input>
+constexpr T parse_value() {
+    static_assert(false, "Invalid value type for parsing");
 }
 
 
 // здесь ваш код
 template<int I, format_string fmt, fixed_string source, typename T>
 constexpr T parse_input() {  // поменяйте сигнатуру
-    // здесь ваш код
     constexpr auto source_range = get_current_source_for_parsing<I, fmt, source>();
     
     constexpr auto source_from = source_range.first;
@@ -127,19 +129,11 @@ constexpr T parse_input() {  // поменяйте сигнатуру
     
     constexpr auto fmt_from = fmt.placeholder_positions[I].first;
     constexpr auto fmt_to = fmt.placeholder_positions[I].second;
-    constexpr auto fmt_str = fmt.substr(fmt_from, fmt_to);
+    constexpr auto fmt_str = fmt.fmt.substr(fmt_from, fmt_to);
+    
+    static_assert(fmt_str == "{" || fmt_str == "{%s" || fmt_str == "{%d" || fmt_str == "{%u", "Invalid placeholder for the given type, or type mismatch.");
 
-        // 3. Сравниваем плейсхолдер и тип, используя consteval-хелпер
-    if constexpr ((fmt_str == "{" 
-                    || fmt_str == "{%s")
-                    || (fmt_str == "{%d" && std::is_signed_v<T>)
-                    || (fmt_str == "{%u" && std::is_unsigned_v<T>)
-                ) 
-    {
-        return parse_value<T, source_str>();
-    } 
-        
-    static_assert(!std::is_same_v<T, T>, "Invalid placeholder for the given type, or type mismatch.");
+    return parse_value<T, source_str>();
 }
 
 
