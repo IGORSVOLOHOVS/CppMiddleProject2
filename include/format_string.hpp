@@ -12,11 +12,11 @@ template<fixed_string str>
 class format_string {
 public:
     static consteval std::expected<size_t, parse_error> get_number_placeholders() {
-        std::expected<size_t, parse_error> number_placeholders;
-
         constexpr size_t N = str.size();
-        if (!N)
-            number_placeholders = 0;
+        if (!N){
+            return std::unexpected(parse_error{"The size of fixed array is equal by zero"});
+        }
+
         size_t placeholder_count = 0;
         size_t pos = 0;
         const size_t size = N - 1; // -1 для игнорирования нуль-терминатора
@@ -30,7 +30,7 @@ public:
 
             // Проверяем незакрытый плейсхолдер
             if (pos + 1 >= size) {
-                number_placeholders = std::unexpected(parse_error{"Unclosed last placeholder"});
+                return std::unexpected(parse_error{"Unclosed last placeholder"});
             }
 
             // Начало плейсхолдера
@@ -41,12 +41,12 @@ public:
             if (str.data[pos] == '%') {
                 ++pos;
                 if (pos >= size) {
-                    number_placeholders = std::unexpected(parse_error{"Unclosed last placeholder"});
+                    return std::unexpected(parse_error{"Unclosed last placeholder"});
                 }
 
                 // Проверяем допустимые спецификаторы
                 const char spec = str.data[pos];
-                constexpr char valid_specs[] = {'d', 'u', 'f', 's'};
+                constexpr std::array valid_specs = {'d', 'u', 's'};
                 bool valid = false;
 
                 for (const char s : valid_specs) {
@@ -57,21 +57,18 @@ public:
                 }
 
                 if (!valid) {
-                    number_placeholders = std::unexpected(parse_error{"Invalid specifier."});
+                    return std::unexpected(parse_error{"Invalid specifier."});
                 }
                 ++pos;
             }
 
             // Проверяем закрывающую скобку
             if (pos >= size || str.data[pos] != '}') {
-                number_placeholders = std::unexpected(parse_error{"\'}\' hasn't been found in appropriate place"});
+                return std::unexpected(parse_error{"\'}\' hasn't been found in appropriate place"});
             }
 
             ++pos;
         }
-
-
-        static_assert(!std::same_as<decltype(number_placeholders), std::unexpected<parse_error>>, "Error!");
 
         return placeholder_count;
     }
@@ -87,13 +84,13 @@ public:
         size_t to_pos = 0;
         while (pos < end_pos) {
             // Пропускаем все символы до '{'
-            while (pos < end_pos && str.c_str()[pos] != '{') {
+            while (pos < end_pos && str[pos] != '{') {
                 ++pos;
             }
             from_pos = pos;
 
             // Пропускаем все символы до '{'
-            while (pos < end_pos && str.c_str()[pos] != '}') {
+            while (pos < end_pos && str[pos] != '}') {
                 ++pos;
             }
             to_pos = pos;
@@ -101,6 +98,7 @@ public:
             if(pos < end_pos)
                 placeholder_positions[curr_placeholder++] = {from_pos, to_pos};
         }
+
         return placeholder_positions;
     }
 
@@ -111,7 +109,6 @@ public:
 
 template<fixed_string str>
 constexpr auto operator""_fs() {
-    // Возвращаем пустой объект, у которого тип содержит всю информацию
     return format_string<str>{};
 }
 

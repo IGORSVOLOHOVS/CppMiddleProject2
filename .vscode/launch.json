@@ -7,13 +7,9 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Launch DymanicScan",
+            "name": "Launch Static Scan",
             "program": "${workspaceFolder}/build/scan_tests",
             "args": [
-                "-i",
-                "input.txt",
-                "--command",
-                "checksum"
             ],
             "cwd": "${workspaceFolder}/build"
         }

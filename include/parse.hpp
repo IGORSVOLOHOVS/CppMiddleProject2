@@ -105,18 +105,23 @@ constexpr T parse_value() {
 }
 
 template<typename T>
-concept stringable = std::is_convertible_v<T, std::string_view>;
+concept convertible_to_string_view = std::is_convertible_v<T, std::string_view>;
 
-template<stringable T, fixed_string input>
+template<convertible_to_string_view T, fixed_string input>
 constexpr T parse_value() {
-    return T{input.c_str(), input.size()};
+    return T{input.data.data(), input.size()};
 }
 
 template<typename T, fixed_string input>
 constexpr T parse_value() {
     static_assert(false, "Invalid value type for parsing");
 }
+// fmt_str == "{" || fmt_str == "{%s" || fmt_str == "{%d" || fmt_str == "{%u",
+// enum class PlaceholderType: char{
+//     EMPTY = '\0',
+//     STRING = ''
 
+// };
 
 // здесь ваш код
 template<int I, format_string fmt, fixed_string source, typename T>

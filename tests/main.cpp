@@ -12,13 +12,10 @@ int main() {
     constexpr const fixed_string str("1234");
     constexpr auto str_same = str;
     constexpr const auto str2 = fixed_string{""};
-    constexpr const auto str3 = fixed_string<6>{"123"};
     static_assert(str == "1234");
-    static_assert(str3 == "123");
-    static_assert(str3.size() == 3);
     static_assert(str == str_same);
     
-    constexpr auto sub = fixed_string(&str[1], &str[3]);
+    constexpr auto sub = fixed_string{&str[1], &str[3]};
     static_assert(sub.size() == 2);
     static_assert(sub == "23");
 

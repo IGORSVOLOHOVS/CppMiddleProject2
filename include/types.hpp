@@ -2,17 +2,14 @@
 
 #include <algorithm>
 #include <array>
-#include <compare>
 #include <cstddef>
 #include <cstring>
 #include <iterator>
 #include <tuple>
-#include <utility>
 
 namespace stdx::details {
 
-constexpr const std::size_t MAX_SUB_STR = 25;
-template<std::size_t N = MAX_SUB_STR>
+template<std::size_t N>
 struct fixed_string {
     constexpr fixed_string(const char (&arr)[N]){
         std::copy_n(arr, N, data.data());
@@ -20,17 +17,23 @@ struct fixed_string {
 
     template<std::size_t S>
     constexpr fixed_string(const char (&arr)[S]){
-        static_assert(S <= N, "Error: the size of object is less then the size of copy object");
+        static_assert(S == 0 || S <= N, "Error: the size of object is less then the size of copy object or is equal by zero");
         std::copy_n(arr, S, data.data());
     }
+    
+    template<std::size_t S1, std::size_t S2>  // const char (&)[N], const char (&)[T]
+    constexpr fixed_string(const char (&from)[S1], const char (&to)[S2]) {
+        if (from > to){
+            throw "Invalid range"; // В constexpr можно использовать throw  
+        } 
 
-    constexpr fixed_string(const char* from, const char* to) {
         const size_t count_to_copy = std::min(static_cast<size_t>(to - from), N);
         std::copy_n(from, count_to_copy, data.data());
     }
 
     constexpr size_t size() const {
-        return N - std::count(data.begin(), data.end(), '\0');
+        const auto it = std::find(data.begin(), data.end(), '\0');  
+        return std::distance(data.begin(), it);
     }
 
     constexpr const char* c_str() const {
@@ -52,6 +55,13 @@ struct fixed_string {
     constexpr bool operator==(const fixed_string& fs) const{
         return std::equal(data.begin(), data.end(), fs.data.begin());
     }
+    template<size_t M>  
+    constexpr bool operator==(const char (&arr)[M]) const {  
+        if (M != N) {
+            return false;
+        }
+        return std::equal(data.begin(), data.end(), arr);  
+    }  
     constexpr bool operator==(const char (&arr)[N]) const {
         return std::equal(data.begin(), data.end(), arr);
     }
@@ -59,8 +69,13 @@ struct fixed_string {
     std::array<char, N> data{};
 };
 
+// Направляющий дедукционный список  
+template<std::size_t N>  
+fixed_string(const char (&)[N]) -> fixed_string<N>;  
+
+
 constexpr const size_t MAX_PARSE_ERROR_MSG_SIZE = 43;
-struct parse_error : public fixed_string<MAX_PARSE_ERROR_MSG_SIZE>{};
+using parse_error = fixed_string<MAX_PARSE_ERROR_MSG_SIZE>; 
 
 template <typename... Ts>
 struct scan_result {
