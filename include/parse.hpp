@@ -16,12 +16,8 @@ template<int I, format_string fmt, fixed_string source>
 consteval auto get_current_source_for_parsing() {
     static_assert(I >= 0 && I < fmt.number_placeholders, "Invalid placeholder index");
 
-    constexpr auto to_sv = [](const auto& fs) {
-        return std::string_view(fs.data.data(), fs.size());
-    };
-
-    constexpr auto fmt_sv = to_sv(fmt.fmt);
-    constexpr auto src_sv = to_sv(source);
+    constexpr auto fmt_sv = fmt.fmt.view();
+    constexpr auto src_sv = source.view();
     constexpr auto& positions = fmt.placeholder_positions;
 
     // Получаем границы текущего плейсхолдера в формате
@@ -66,41 +62,24 @@ consteval auto get_current_source_for_parsing() {
 
 
 // Реализуйте семейство функция parse_value
-
-// Шаблонная функция, выполняющая преобразования исходных данных в конкретный тип на основе I-го плейсхолдера
-template<std::signed_integral T, fixed_string input>
+template <std::integral T, fixed_string input>
 constexpr T parse_value() {
     std::remove_cv_t<T> result = 0;
-    size_t pos = 0;
-    int sign = 1;
-
-    if (input[0] == '-') {
-        sign = -1;
-        pos = 1;
-    } else if (input[0] == '+') {
-        pos = 1;
-    }
-    
-    for (size_t i = pos; i < input.size(); ++i) {
-        if (input[i] >= '0' && input[i] <= '9') {
-            result = result * 10 + (input[i] - '0');
-        }
+    constexpr size_t size = input.size();
+    if(size == 0){
+        throw "Input is empty. Parsing error.\n";
     }
 
-    return result * sign;
-}
-
-template <std::unsigned_integral T, fixed_string input>
-constexpr T parse_value() {
-    std::remove_cv_t<T> result = 0;
-    size_t pos = 0;
-
-    for (size_t i = pos; i < input.size(); ++i) {
-        if (input[i] >= '0' && input[i] <= '9') {
-            result = result * 10 + (input[i] - '0');
-        }
+    auto [ptr, errc] = std::from_chars(&input[0], &input[0] + size, result);
+    if (errc == std::errc::invalid_argument){
+        throw "This is not a number.\n";
+    }else if (errc == std::errc::result_out_of_range) {
+        throw "This number is larger than an std::remove_cv_t<T>.\n";
+    }else if (ptr != &input[0] + size) {
+        throw "This number has unother symbols.\n";
+    }else if(errc != std::errc()){
+        throw "Parsing error!";
     }
-
     return result;
 }
 
@@ -114,14 +93,27 @@ constexpr T parse_value() {
 
 template<typename T, fixed_string input>
 constexpr T parse_value() {
-    static_assert(false, "Invalid value type for parsing");
+    throw "Unsupported type";
 }
-// fmt_str == "{" || fmt_str == "{%s" || fmt_str == "{%d" || fmt_str == "{%u",
-// enum class PlaceholderType: char{
-//     EMPTY = '\0',
-//     STRING = ''
 
-// };
+enum class PlaceholderType{
+    STRING_VIEW = 0,
+    UNSIGNED_INT,
+    SIGNED_INT,
+};
+
+template<format_string fmt>
+constexpr auto get_placeholder_type(){
+    constexpr auto fmt_view = fmt.fmt.view();
+    if(fmt_view.contains('s')){
+        return PlaceholderType::STRING_VIEW;
+    }else if(fmt_view.contains('u')){
+        return PlaceholderType::UNSIGNED_INT;
+    }else if(fmt_view.contains('d')){
+        return PlaceholderType::SIGNED_INT;
+    }
+    return PlaceholderType::STRING_VIEW;
+}
 
 // здесь ваш код
 template<int I, format_string fmt, fixed_string source, typename T>
@@ -135,10 +127,23 @@ constexpr T parse_input() {  // поменяйте сигнатуру
     constexpr auto fmt_from = fmt.placeholder_positions[I].first;
     constexpr auto fmt_to = fmt.placeholder_positions[I].second;
     constexpr auto fmt_str = fmt.fmt.substr(fmt_from, fmt_to);
-    
-    static_assert(fmt_str == "{" || fmt_str == "{%s" || fmt_str == "{%d" || fmt_str == "{%u", "Invalid placeholder for the given type, or type mismatch.");
 
-    return parse_value<T, source_str>();
+    switch (get_placeholder_type<fmt>()) {
+        case PlaceholderType::STRING_VIEW:{
+            return parse_value<T, source_str>();
+        }
+        case PlaceholderType::UNSIGNED_INT:{
+            if constexpr (std::is_unsigned<T>()){
+                return parse_value<T, source_str>();
+            }
+        }
+        case PlaceholderType::SIGNED_INT:{
+            if constexpr (std::is_signed<T>()){
+                return parse_value<T, source_str>();
+            }
+        }
+    }
+    throw "Invalid placeholder for the given type, or type mismatch.";
 }
 
 

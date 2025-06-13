@@ -10,7 +10,6 @@ namespace stdx::details {
 
 template<fixed_string str>
 class format_string {
-public:
     static consteval std::expected<size_t, parse_error> get_number_placeholders() {
         constexpr size_t N = str.size();
         if (!N){
@@ -19,7 +18,7 @@ public:
 
         size_t placeholder_count = 0;
         size_t pos = 0;
-        const size_t size = N - 1; // -1 для игнорирования нуль-терминатора
+        const size_t size = N;
 
         while (pos < size) {
             // Пропускаем все символы до '{'
@@ -76,32 +75,29 @@ public:
     static consteval auto get_placeholder_positions() {
         std::array<std::pair<size_t, size_t>, number_placeholders> placeholder_positions;
 
-        size_t curr_placeholder = 0;
-        size_t pos = 0;
-        constexpr size_t end_pos = str.size();
-
         size_t from_pos = 0;
         size_t to_pos = 0;
-        while (pos < end_pos) {
-            // Пропускаем все символы до '{'
-            while (pos < end_pos && str[pos] != '{') {
-                ++pos;
-            }
-            from_pos = pos;
+        size_t end_pos = str.size();
+        size_t iter = 0;
 
-            // Пропускаем все символы до '{'
-            while (pos < end_pos && str[pos] != '}') {
-                ++pos;
+        constexpr auto data_view = str.view();
+        while(to_pos < end_pos){
+            from_pos = data_view.find_first_of('{', to_pos);
+            if(from_pos == std::string_view::npos){
+                break;
             }
-            to_pos = pos;
 
-            if(pos < end_pos)
-                placeholder_positions[curr_placeholder++] = {from_pos, to_pos};
+            to_pos = data_view.find_first_of('}', from_pos);
+            if(to_pos == std::string_view::npos){
+                throw "\'}\' hasn't been found in appropriate place";
+            }
+
+            placeholder_positions[iter++] = {from_pos, to_pos};
         }
-
         return placeholder_positions;
     }
 
+public:
     static constexpr auto fmt = str;
     static constexpr auto number_placeholders = get_number_placeholders().value();
     static constexpr auto placeholder_positions = get_placeholder_positions();

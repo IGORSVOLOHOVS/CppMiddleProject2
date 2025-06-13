@@ -20,11 +20,10 @@ struct fixed_string {
         static_assert(S == 0 || S <= N, "Error: the size of object is less then the size of copy object or is equal by zero");
         std::copy_n(arr, S, data.data());
     }
-    
-    template<std::size_t S1, std::size_t S2>  // const char (&)[N], const char (&)[T]
-    constexpr fixed_string(const char (&from)[S1], const char (&to)[S2]) {
+
+    constexpr fixed_string(const char *from, const char* to) {
         if (from > to){
-            throw "Invalid range"; // В constexpr можно использовать throw  
+            throw "Invalid range"; 
         } 
 
         const size_t count_to_copy = std::min(static_cast<size_t>(to - from), N);
@@ -36,8 +35,8 @@ struct fixed_string {
         return std::distance(data.begin(), it);
     }
 
-    constexpr const char* c_str() const {
-        return data.data();
+    constexpr std::string_view view() const {
+        return {data.data(), size()};
     }
 
     constexpr const char& operator[](size_t index) const {
@@ -55,16 +54,14 @@ struct fixed_string {
     constexpr bool operator==(const fixed_string& fs) const{
         return std::equal(data.begin(), data.end(), fs.data.begin());
     }
+
     template<size_t M>  
     constexpr bool operator==(const char (&arr)[M]) const {  
-        if (M != N) {
+        if (this->size() != (M - 1)) {
             return false;
         }
-        return std::equal(data.begin(), data.end(), arr);  
+        return std::equal(data.begin(), data.begin() + this->size(), arr);  
     }  
-    constexpr bool operator==(const char (&arr)[N]) const {
-        return std::equal(data.begin(), data.end(), arr);
-    }
 
     std::array<char, N> data{};
 };
@@ -72,7 +69,6 @@ struct fixed_string {
 // Направляющий дедукционный список  
 template<std::size_t N>  
 fixed_string(const char (&)[N]) -> fixed_string<N>;  
-
 
 constexpr const size_t MAX_PARSE_ERROR_MSG_SIZE = 43;
 using parse_error = fixed_string<MAX_PARSE_ERROR_MSG_SIZE>; 
