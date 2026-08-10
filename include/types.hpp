@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstring>
 #include <iterator>
+#include <string_view>
 #include <tuple>
 
 namespace stdx::details {
