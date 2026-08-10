@@ -1,0 +1,81 @@
+# Configure, build and test the project the way the dev container does.
+#
+# The point of this workflow is that it runs the tests. A job that only
+# compiled, or only checked formatting, would report green while proving
+# nothing about the library's behaviour - and this repository's test suite is
+# unusual enough that skipping half of it is easy to do by accident:
+#
+#   * tests/true_*.cpp are executables registered with add_test() and run by
+#     ctest;
+#   * tests/fail_*.cpp are files that MUST NOT compile. They hang off the
+#     custom target `check-compile-fails`, which is not part of `all`, so
+#     `cmake --build` alone never touches them. The dedicated step below builds
+#     that target on purpose.
+#
+# scripts/check_before_push.py runs exactly these steps locally.
+
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-and-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux / GCC 14 / Debug
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Report the runner image
+        run: |
+          set -eux
+          . /etc/os-release && echo "$PRETTY_NAME"
+          cmake --version
+          apt-cache policy g++-14 g++-15 || true
+
+      # The dev container pins g++-14 (see .devcontainer/Dockerfile), and the
+      # sources use C++23 well past what the runner's default GCC accepts.
+      - name: Install GCC 14
+        run: |
+          set -eux
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends g++-14 gcc-14 ccache
+
+      - name: Restore the compiler cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-linux-gcc14-${{ github.sha }}
+          restore-keys: |
+            ccache-linux-gcc14-
+
+      - name: Configure
+        env:
+          CC: gcc-14
+          CXX: g++-14
+        run: cmake --preset linux-default -D CMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build --preset linux-default
+
+      # The negative tests: every tests/fail_*.cpp must be rejected by the
+      # compiler. `sh -c "! g++ ..."` inverts the exit status, so this step is
+      # red exactly when a file that should not compile does.
+      - name: Check that the fail_*.cpp cases still do not compile
+        env:
+          CC: gcc-14
+          CXX: g++-14
+        run: cmake --build build --target check-compile-fails
+
+      - name: Test
+        run: ctest --preset linux-default
