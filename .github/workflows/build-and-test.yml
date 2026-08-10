@@ -32,6 +32,8 @@ jobs:
   linux:
     name: Linux / GCC 14 / Debug
     runs-on: ubuntu-latest
+    # A hung test would otherwise hold a runner for six hours.
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +43,6 @@ jobs:
           set -eux
           . /etc/os-release && echo "$PRETTY_NAME"
           cmake --version
-          apt-cache policy g++-14 g++-15 || true
 
       # The dev container pins g++-14 (see .devcontainer/Dockerfile), and the
       # sources use C++23 well past what the runner's default GCC accepts.
@@ -79,3 +80,37 @@ jobs:
 
       - name: Test
         run: ctest --preset linux-default
+
+  # A second platform is only worth having if it is dependable, and this
+  # repository is the cheapest possible case for one: a header-only library
+  # with no third-party dependencies at all, so the Windows job is a compiler
+  # and nothing else. It runs the repository's own scripts/build_windows.ps1 -
+  # the same entry point a developer uses on Windows - which imports the MSVC
+  # environment, configures the windows-msvc-release preset, builds, and runs
+  # ctest.
+  windows:
+    name: Windows / MSVC / Release
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # The preset uses the Ninja generator. Visual Studio ships a ninja, but
+      # only with an optional component and not on PATH, so it is installed
+      # explicitly rather than hoped for.
+      - name: Install Ninja
+        run: pip install ninja
+
+      # The fail_*.cpp cases are deliberately not repeated here. build_windows.ps1
+      # imports the MSVC environment into its own process, so a later step no
+      # longer has cl.exe on PATH - and check-compile-fails asserts that
+      # compilation FAILS, which is exactly what a missing compiler produces.
+      # The step would pass on every commit while testing nothing, which is a
+      # worse outcome than checking those cases on Linux alone.
+      - name: Build and test
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_windows.ps1

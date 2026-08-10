@@ -1,2 +1,6 @@
 *.cache/
 *build/
+
+# Byte-code left behind by the helper scripts in scripts/.
+__pycache__/
+*.py[cod]
