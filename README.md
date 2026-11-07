@@ -1,108 +1,30 @@
-# cpp-middle-project-sprint-2-dynamic <!-- omit in toc -->
+# cpp-middle-project2
 
-- [Начало работы](#начало-работы)
-- [Сборка проекта и запуск тестов](#сборка-проекта-и-запуск-тестов)
-  - [Команды для сборки проекта](#команды-для-сборки-проекта)
-  - [Команда для запуска тестов](#команда-для-запуска-тестов)
-- [Сборка под Windows](#сборка-под-windows)
-  - [Что нужно установить](#что-нужно-установить)
-  - [Как собрать](#как-собрать)
-  - [Пресеты CMake](#пресеты-cmake)
+A compile-time `scan` in modern C++23, the reverse of `std::format`: a format string and a source string go in as template arguments, and typed values come out while the program compiles. It began as the sprint 2 project of the Yandex Practicum "Middle C++ developer" course. It is four headers and depends on nothing but the standard library.
 
+## What it does
 
-Шаблон репозитория для практического задания «Динамическая версия `scan`: интерпретация данных в runtime» 2-го спринта «Мидл разработчик С++»
+- **`stdx::scan<fmt, source, Ts...>()`**: reads `Ts...` out of `source` by the placeholders of `fmt`, and answers a `scan_result` whose `get<I>()` and `size()` are usable in a `static_assert`.
+- **Placeholders**: `{}`, `{%d}`, `{%u}` and `{%s}`.
+- **`fixed_string` and `format_string`**: a string usable as a template argument, and a format string counted and checked at compile time, through the `_fs` literal.
+- **`parse_value<T, input>()`**: every integer type, with their limits, and anything that converts to `std::string_view`.
 
-## Начало работы
+A bad format string or a value that does not parse stops the build. That is the design: the headers `throw` during constant evaluation, and the compiler refuses the throw. `.\recipe.ps1 test` pins those 10 lines.
 
-1. Нажмите зелёную кнопку `Use this template`, затем `Create a new repository`.
-2. Назовите свой репозиторий.
-3. Склонируйте созданный репозиторий командой `git clone your-repository-name`.
-4. Создайте новую ветку командой `git switch -c development`.
-5. Откройте проект в `Visual Studio Code`.
-6. Нажмите `F1` и откройте проект в dev-контейнере командой `Dev Containers: Reopen in Container`.
+## Layout
 
-## Сборка проекта и запуск тестов
-
-Данный репозиторий использует **cmake** — генератор систем сборки для C и C++. Позволяет создавать проекты, которые могут компилироваться на различных платформах и с различными компиляторами. Подробнее о cmake:
-  - https://dzen.ru/a/ZzZGUm-4o0u-IQlb
-  - https://neerc.ifmo.ru/wiki/index.php?title=CMake_Tutorial
-  - https://cmake.org/cmake/help/book/mastering-cmake/cmake/Help/guide/tutorial/index.html
-
-### Команды для сборки проекта
-
-```bash
-mkdir build ; cd build
-
-# Вызывается один раз перед сборкой проекта, чтобы скачать и установить все необходимые зависимости
-conan install --settings=build_type=Debug --build=missing ..
-
-# Вызывается каждый раз, когда необходимо собрать проект
-conan build --settings=build_type=Debug ..
+```text
+include/  the library, four headers
+tests/    main.cpp and true_*.cpp must compile and run; fail_*.cpp must be refused
+cmake/    expect_compile_refusal.cmake, which reads why a fail_*.cpp was refused
 ```
 
-### Команда для запуска тестов
+## Build and test
 
-```bash
-cd build
-ctest --verbose
-```
+`.\recipe.ps1 test` builds in Debug, because the tests hold an `assert`, then runs `ctest`, `clang-tidy` and `clang-format`, and searches `include` for locks and for `throw`, `try` and `catch`. It needs mingw g++, cmake, ninja and LLVM. `ctest` compiles each `tests/fail_*.cpp`, and `CMakeLists.txt` names how many refusals each one must give and the throw each must come from: a refusal for any other reason fails the test. `docs/install.md` has the details, and `docs/manual.md` covers the library.
 
-## Сборка под Windows
+MIT licensed: `LICENSE` is the course's, copyright Yandex Practicum.
 
-Dev-контейнер остаётся основным способом сборки, но проект собирается и нативно —
-компилятором MSVC, без Docker и без WSL. Точка входа одна: `scripts\build_windows.ps1`.
+## Lab requirements
 
-### Что нужно установить
-
-- **Visual Studio 2022** (Community достаточно) с рабочей нагрузкой
-  «Разработка классических приложений на C++». Нужен компилятор MSVC v143;
-  проверялось на `cl.exe` 19.44. Более ранние версии могут не потянуть C++23:
-  проект опирается на `std::expected`, `std::println` и `std::string_view::contains`.
-- **CMake ≥ 3.25** и **Ninja** на `PATH`. Оба приезжают вместе с компонентом
-  Visual Studio «C++ CMake tools for Windows», если ставить их отдельно не хочется.
-- Conan **не нужен**: внешних зависимостей у проекта нет, все заголовки свои.
-  Скрипт вызывает Conan только если в корне появится `conanfile.py`/`conanfile.txt`.
-
-Отдельно запускать «Developer Command Prompt» не требуется — скрипт сам находит
-`vcvars64.bat` (через `vswhere`, с запасными путями) и вносит окружение MSVC в
-свой процесс.
-
-### Как собрать
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
-```
-
-Скрипт настраивает CMake, собирает всё и прогоняет `ctest`, а в конце печатает
-пути к получившимся `.exe`. Результат лежит в `build\windows`, основной
-исполняемый файл — `build\windows\scan_tests.exe`.
-
-Полезные ключи:
-
-| Ключ | Зачем |
-| --- | --- |
-| `-BuildType Debug` | сборка с отладочной информацией в `build\windows-debug` |
-| `-Clean` | удалить каталог сборки и собрать с нуля |
-| `-SkipTests` | не запускать `ctest` |
-
-Тесты, которые обязаны **не** компилироваться (`tests/fail_*.cpp`), в обычную
-сборку не входят — как и на Linux, они собираются отдельной целью:
-
-```powershell
-cmake --build build\windows --target check-compile-fails
-```
-
-### Пресеты CMake
-
-`CMakePresets.json` описывает обе платформы, поэтому IDE (Visual Studio, VS Code,
-CLion) подхватывает конфигурацию сама:
-
-| Пресет | Платформа | Генератор | Каталог сборки |
-| --- | --- | --- | --- |
-| `linux-default` | Linux / dev-контейнер | Unix Makefiles | `build/` |
-| `windows-msvc-release` | Windows, MSVC x64 | Ninja | `build/windows/` |
-| `windows-msvc-debug` | Windows, MSVC x64 | Ninja | `build/windows-debug/` |
-
-Windows-пресеты рассчитаны на окружение MSVC: если запускать их руками, а не
-через `scripts\build_windows.ps1`, делать это надо из «Developer PowerShell for
-VS 2022», иначе CMake не найдёт `cl.exe`.
+This repository complies with [revision 4.0.0](http://127.0.0.1:3000/igors-lab/software-requirements/src/tag/v4.0.0/BEST_REQUIREMENTS.md) of the lab requirements, except R-02 (#8), R-09 (#9), R-12 (#10), R-13 (#11), R-13 (#12), R-14 (#13), R-37 (#14), R-41 (#15), R-42 (#16).

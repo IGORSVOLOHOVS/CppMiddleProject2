@@ -1,0 +1,15 @@
+# The library throws on purpose, at compile time, and clang-tidy cannot tell that from a throw at run time.
+# clang-tidy 21.1.6 dies with "LLVM ERROR: out of memory" on get_current_source_for_parsing under the analyzer's
+# dynamic memory, C string and placement new models, so the checks that load them leave. The rest of it stays.
+InheritParentConfig: true
+Checks: >-
+  -bugprone-exception-escape,
+  -clang-analyzer-cplusplus.InnerPointer,
+  -clang-analyzer-cplusplus.NewDelete,
+  -clang-analyzer-cplusplus.NewDeleteLeaks,
+  -clang-analyzer-cplusplus.PlacementNew,
+  -clang-analyzer-optin.taint.TaintedAlloc,
+  -clang-analyzer-unix.DynamicMemoryModeling,
+  -clang-analyzer-unix.Malloc,
+  -clang-analyzer-unix.MismatchedDeallocator,
+  -clang-analyzer-unix.cstring.*

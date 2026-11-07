@@ -3,12 +3,11 @@
 #include "scan.hpp"
 #include "types.hpp"
 #include <cassert>
-#include <print>
 
 using namespace stdx::details;
 
 using namespace std::string_view_literals;
-int main() { 
+int main() {
     // Test 1: fixed_string
     {
         constexpr fixed_string fstr("1234");
@@ -21,7 +20,7 @@ int main() {
 
         constexpr auto fstr_empty = fixed_string{""};
         static_assert(fstr_empty == "", "Compile error: fstr_empty is not empty");
-        
+
         // Создание подстроки с явным указанием размера
         constexpr fixed_string<2> fstr_sub{&fstr[1], &fstr[3]};
         static_assert(fstr_sub == "23", "Compile error: fstr_sub is not equal by 23");
@@ -29,6 +28,5 @@ int main() {
         // Создание подстроки через метод substr
         constexpr auto fstr_sub_m = fstr.substr(1, 3);
         static_assert(fstr_sub_m == "23", "Compile error: fstr_sub_m is not equal by 23");
-
     }
 }

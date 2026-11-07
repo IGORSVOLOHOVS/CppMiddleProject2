@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SCAN_FORMAT_STRING_HPP
+#define SCAN_FORMAT_STRING_HPP
 
 #include <concepts>
 #include <cstring>
@@ -8,11 +9,11 @@
 
 namespace stdx::details {
 
-template<fixed_string str>
+template <fixed_string str>
 class format_string {
     static consteval std::expected<size_t, parse_error> get_number_placeholders() {
         constexpr size_t N = str.size();
-        if (!N){
+        if (!N) {
             return std::unexpected(parse_error{"The size of fixed array is equal by zero"});
         }
 
@@ -81,14 +82,14 @@ class format_string {
         size_t iter = 0;
 
         constexpr auto data_view = str.view();
-        while(to_pos < end_pos){
+        while (to_pos < end_pos) {
             from_pos = data_view.find_first_of('{', to_pos);
-            if(from_pos == std::string_view::npos){
+            if (from_pos == std::string_view::npos) {
                 break;
             }
 
             to_pos = data_view.find_first_of('}', from_pos);
-            if(to_pos == std::string_view::npos){
+            if (to_pos == std::string_view::npos) {
                 throw "\'}\' hasn't been found in appropriate place";
             }
 
@@ -103,9 +104,11 @@ public:
     static constexpr auto placeholder_positions = get_placeholder_positions();
 };
 
-template<fixed_string str>
+template <fixed_string str>
 constexpr auto operator""_fs() {
     return format_string<str>{};
 }
 
-} // namespace stdx::details
+}  // namespace stdx::details
+
+#endif  // SCAN_FORMAT_STRING_HPP
