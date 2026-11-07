@@ -3,13 +3,12 @@
 #include "scan.hpp"
 #include "types.hpp"
 #include <cassert>
-#include <print>
 
 using namespace stdx::details;
 
 using namespace std::string_view_literals;
 
-int main() { 
+int main() {
     // Test 2: format_string
     {
         constexpr auto fmt = "I want to sum {} and {%d} numbers."_fs;
@@ -23,6 +22,5 @@ int main() {
 
         static_assert(fmt.fmt.substr(14, 15) == "{", "Substring for placeholder 0 failed");
         static_assert(fmt.fmt.substr(21, 24) == "{%d", "Substring for placeholder 1 failed");
-
     }
 }
