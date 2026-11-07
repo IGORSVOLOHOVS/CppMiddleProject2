@@ -3,12 +3,11 @@
 #include "scan.hpp"
 #include "types.hpp"
 #include <cassert>
-#include <print>
 
 using namespace stdx::details;
 
 using namespace std::string_view_literals;
-int main() { 
+int main() {
     // Test 3: get_current_source_for_parsing
     {
         constexpr auto fmt = "I want to sum {} and {%d} numbers."_fs;
@@ -24,6 +23,5 @@ int main() {
 
         static_assert(source.substr(source_1.first, source_1.second) == "123", "Parsed source 1 content mismatch");
         static_assert(source.substr(source_2.first, source_2.second) == "-4567", "Parsed source 2 content mismatch");
-
     }
 }
