@@ -2,6 +2,26 @@
 
 Reverse-engineered from commit `c67878c` on 2026-11-18. Only behaviour present in the code is stated as a requirement. Line references to headers are to the files as of that commit.
 
+<!-- jira-sync:start -->
+Jira: KAN-146
+
+## Tasks
+
+This list is one ticket in Jira project KAN, [KAN-146](https://igorsvolohovs.atlassian.net/browse/KAN-146). Each line is a checkbox there: tick it in Jira and the sync ticks it here; add a checkbox there and it is appended here. Done items are the features described in section 3; open items are what the project declares but the code does not do yet.
+
+- [x] fixed_string (section 3.1) <!-- spec-fixedstring -->
+- [x] Format string (section 3.2) <!-- spec-format-string -->
+- [x] Value parsing (section 3.3) <!-- spec-value-parsing -->
+- [x] Source slicing and placeholder input (section 3.4) <!-- spec-source-slicing-and-placeholder-input -->
+- [x] scan (section 3.5) <!-- spec-scan -->
+- [x] Test harness (section 3.6) <!-- spec-test-harness -->
+- [ ] Per-placeholder type checking by `{%d}` / `{%u}` / `{%s}` (declared, not implemented) <!-- spec-per-placeholder-type-checking-by-d-u-s -->
+- [ ] "The text between placeholders must match the source" (declared, not implemented) <!-- spec-the-text-between-placeholders-must-match-the-sourc -->
+- [ ] Manual tests (declared, not implemented) <!-- spec-manual-tests -->
+- [ ] Test cases 8-12 in `scan_tests` (declared, not implemented) <!-- spec-test-cases-8-12-in-scantests -->
+
+<!-- jira-sync:end -->
+
 ## 1. Purpose and scope
 
 The library extracts typed values from a source string according to a format string during compilation, the reverse of `std::format` (`README.md`).
